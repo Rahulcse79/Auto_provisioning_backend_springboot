@@ -4,10 +4,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
+import java.util.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +27,7 @@ import com.example.autoprovisioning.component.entity.DeviceManagerInfo;
 import com.example.autoprovisioning.component.repository.DeviceManagerInfoRespository;
 import com.example.autoprovisioning.component.helper.Constants;
 import com.example.autoprovisioning.component.helper.RequestResponse;
+import com.example.autoprovisioning.component.model.DeviceManagerExtension;
 import com.example.autoprovisioning.component.model.DeviceManagerInfoModel;
 
 @Service
@@ -276,7 +279,8 @@ public class DeviceManagerService {
     }
 
     // Api for configuration upload call.
-    public RequestResponse methodOfUploadFirmware(String token,  String extensionName, byte[] FileData, String macAddress) {
+    public RequestResponse methodOfUploadFirmware(String token, String extensionName, byte[] FileData,
+            String macAddress) {
         RequestResponse returnValue = new RequestResponse();
         try {
             DeviceManagerInfoModel deviceData = new DeviceManagerInfoModel();
@@ -312,8 +316,8 @@ public class DeviceManagerService {
                 returnValue.setStatus(0);
                 returnValue.setMessage(response.getBody());
                 returnValue.setMessageDetail("Firmware file upload api call successfully and history added.");
-                if(setHistoryResponse.getStatus() == -1)
-                returnValue.setMessageDetail("Firmware file upload api call successfully and history api fail.");
+                if (setHistoryResponse.getStatus() == -1)
+                    returnValue.setMessageDetail("Firmware file upload api call successfully and history api fail.");
                 return returnValue;
             } else {
                 returnValue.setStatus(-1);
@@ -321,8 +325,7 @@ public class DeviceManagerService {
                 logger.info(returnValue.getMessage());
                 return returnValue;
             }
-        } catch (
-        Exception e) {
+        } catch (Exception e) {
             returnValue.setStatus(-1);
             returnValue.setMessage("Firmware file upload Internal server error macAddress: " + macAddress);
             logger.error(returnValue.getMessage(), e);
@@ -366,8 +369,9 @@ public class DeviceManagerService {
                 returnValue.setStatus(0);
                 returnValue.setMessage(response.getBody());
                 returnValue.setMessageDetail("Configuration file upload api call successfully and history added.");
-                if(setHistoryResponse.getStatus() == -1)
-                returnValue.setMessageDetail("Configuration file upload api call successfully and history api fail.");
+                if (setHistoryResponse.getStatus() == -1)
+                    returnValue
+                            .setMessageDetail("Configuration file upload api call successfully and history api fail.");
                 return returnValue;
             } else {
                 returnValue.setStatus(-1);
@@ -375,8 +379,7 @@ public class DeviceManagerService {
                 logger.info(returnValue.getMessage());
                 return returnValue;
             }
-        } catch (
-        Exception e) {
+        } catch (Exception e) {
             returnValue.setStatus(-1);
             returnValue.setMessage("Configuration file upload Internal server error macAddress: " + macAddress);
             logger.error(returnValue.getMessage(), e);
@@ -592,8 +595,8 @@ public class DeviceManagerService {
                     DbDate = DbDate.replaceAll("\\D", "");
                     currentDate = currentDate.replaceAll("\\D", "");
                     String rearrangedDate = currentDate.substring(6, 8) + // Day
-                    currentDate.substring(4, 6) + // Month
-                    currentDate.substring(0, 4);  // Year
+                            currentDate.substring(4, 6) + // Month
+                            currentDate.substring(0, 4); // Year
                     System.out.println(DbDate + " db");
                     System.out.println(rearrangedDate);
                     System.out.println(dbModifiedTime);
@@ -678,5 +681,72 @@ public class DeviceManagerService {
             logger.error(returnValue.getMessage(), e);
             return returnValue;
         }
+    }
+
+    // Method of listing devices
+    public RequestResponse methodOfListingDevices(String token) {
+        RequestResponse returnValue = new RequestResponse();
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.set("Cookie", "session={\"AuthToken\":\"" + token + "\"}");
+            HttpEntity<byte[]> entity = new HttpEntity<>(headers);
+            String url = "http://" + Constants.DEVICE_MANAGER_IP + "/device-manager/api/files/?filter=true";
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.PUT, entity,
+                    String.class);
+            if (response.getStatusCode() == HttpStatus.OK) {
+                returnValue.setStatus(0);
+                returnValue.setMessage(response.getBody());
+                returnValue.setMessageDetail("Listing device api call successfully.");
+                return returnValue;
+            } else {
+                returnValue.setStatus(-1);
+                returnValue.setMessage("Listing device api call fail.");
+                logger.info(returnValue.getMessage());
+                return returnValue;
+            }
+        } catch (Exception e) {
+            returnValue.setStatus(-1);
+            returnValue.setMessage("Listing device internal server error.");
+            logger.error(returnValue.getMessage(), e);
+            return returnValue;
+        }
+    }
+
+    public static String base64Encode(String str) {
+        return Base64.getEncoder().encodeToString(str.getBytes());
+    }
+
+    public RequestResponse updateSipExtension(String userName, String password, String token ,String macAddress, DeviceManagerExtension request) {
+        RequestResponse result = new RequestResponse();
+        try {
+            String url = "http://" + macAddress + "/download_xml_cfg";
+            String encodedCredentials = base64Encode(userName + ":" + password);
+            HttpHeaders headers = new HttpHeaders();
+            headers.set(HttpHeaders.AUTHORIZATION, "Basic " + encodedCredentials);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            RestTemplate restTemplate = new RestTemplate();
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    entity,
+                    String.class);
+            if (response.getStatusCode() == HttpStatus.OK) {
+                String responseBody = response.getBody();
+                byte[] fileData = responseBody.getBytes(StandardCharsets.UTF_8);
+                //UpdateConfigFileDate(fileData,request);
+                result.setStatus(0);
+                result.setMessage("SIP extension updated successfully.");
+            } else {
+                result.setStatus(response.getStatusCodeValue());
+                result.setMessage("Failed to update SIP extension. HTTP Status Code: " + response.getStatusCode());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            result.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
+            result.setMessage("Internal server error: " + e.getMessage());
+        }
+        return result;
     }
 }

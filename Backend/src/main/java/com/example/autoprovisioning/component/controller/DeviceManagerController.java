@@ -4,6 +4,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import com.example.autoprovisioning.component.service.DeviceManagerService;
 import com.example.autoprovisioning.component.helper.RequestResponse;
+import com.example.autoprovisioning.component.model.DeviceManagerExtension;
+
 import java.io.IOException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -218,5 +221,36 @@ public class DeviceManagerController {
             return new ResponseEntity<>(returnValue, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+    @PostMapping("/sip/{macAddress}")
+    public ResponseEntity<RequestResponse> methodOfSetExtension(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable String macAddress,
+            @RequestBody DeviceManagerExtension request) {
+        RequestResponse returnValue = new RequestResponse();
+        try {
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                returnValue.setMessage("Authorization header missing or invalid");
+                return new ResponseEntity<>(returnValue, HttpStatus.UNAUTHORIZED);
+            }
+            String token = authHeader.substring(7);
+            String username = "admin";
+            String password = "admin";
+            returnValue = deviceService.updateSipExtension(username, password, token, macAddress, request);
+            if (returnValue.getStatus() == 0) {
+                return ResponseEntity.ok(returnValue); 
+            } else {
+                returnValue.setMessage("Extension update failed."); 
+                return new ResponseEntity<>(returnValue, HttpStatus.BAD_REQUEST); 
+            }
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            returnValue.setMessage("Bad request: " + e.getMessage());
+            return new ResponseEntity<>(returnValue, HttpStatus.BAD_REQUEST);
+        } catch (Exception e) {
+            returnValue.setMessage("Internal server error: " + e.getMessage());
+            return new ResponseEntity<>(returnValue, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    
 
 }
