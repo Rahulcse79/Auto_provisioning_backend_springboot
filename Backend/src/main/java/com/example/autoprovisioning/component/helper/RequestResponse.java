@@ -7,6 +7,9 @@ public class RequestResponse {
     private String message;
     private String messageDetail;
     private Object data;
+    private int value;
+    private int total;
+    byte[] fileData;
 
     public RequestResponse() {
         this.status = 0;
@@ -31,6 +34,32 @@ public class RequestResponse {
 
     public int getStatus() {
         return status;
+    }
+
+    public byte[] getFileData(){
+        return fileData;
+    }
+
+    public void setFileData(byte[] fileData){
+        this.fileData = fileData;
+    }
+
+    public int getTotal(){
+        return total;
+    }
+
+    public void setTotal(int total){
+        this.total = total;
+    }
+
+    public void setValue(int value)
+    {
+        this.value = value;
+    }
+
+    public int getValue()
+    {
+        return value;
     }
 
     public void setStatus(int status) {

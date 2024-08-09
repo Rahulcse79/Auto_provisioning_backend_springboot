@@ -44,7 +44,17 @@ public class DeviceManagerInfo {
     @Column(name = "firmware_version")
     private String firmwareVersion;
 
+    @Column(name = "active_device")
+    private boolean activeDevice;
+
+    @Column(name = "ip_address")
+    private String ipAddress;
+
+    @Column(name = "ping")
+    private boolean ping;
+
     @Column(name = "configuration_version")
     private String configurationVersion;
+
 }
 

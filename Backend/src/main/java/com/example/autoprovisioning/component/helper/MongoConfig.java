@@ -22,14 +22,12 @@ public class MongoConfig extends AbstractMongoClientConfiguration {
     @Override
     public MongoClient mongoClient() {
         String mongoUri = "mongodb://" + Constants.MongoDB_IP + ":27017/genieacs";
-        System.out.println("Connecting to MongoDB using URI: " + mongoUri);
         return MongoClients.create(mongoUri);
     }
 
     @Bean
     public MongoTemplate mongoTemplate() throws Exception {
         MongoTemplate mongoTemplate = new MongoTemplate(mongoClient(), getDatabaseName());
-        System.out.println("MongoTemplate initialized for database: " + getDatabaseName());
         return mongoTemplate;
     }
 }

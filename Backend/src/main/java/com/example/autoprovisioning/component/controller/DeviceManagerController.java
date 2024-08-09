@@ -5,7 +5,6 @@ import org.springframework.web.multipart.MultipartFile;
 import com.example.autoprovisioning.component.service.DeviceManagerService;
 import com.example.autoprovisioning.component.helper.RequestResponse;
 import com.example.autoprovisioning.component.model.DeviceManagerExtension;
-
 import java.io.IOException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -13,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -222,6 +222,7 @@ public class DeviceManagerController {
         }
     }
 
+    // Api of sip ip and extension update.
     @PostMapping("/sip/{macAddress}")
     public ResponseEntity<RequestResponse> methodOfSetExtension(
             @RequestHeader("Authorization") String authHeader,
@@ -238,10 +239,10 @@ public class DeviceManagerController {
             String password = "admin";
             returnValue = deviceService.updateSipExtension(username, password, token, macAddress, request);
             if (returnValue.getStatus() == 0) {
-                return ResponseEntity.ok(returnValue); 
+                return ResponseEntity.ok(returnValue);
             } else {
-                returnValue.setMessage("Extension update failed."); 
-                return new ResponseEntity<>(returnValue, HttpStatus.BAD_REQUEST); 
+                returnValue.setMessage("Extension update failed.");
+                return new ResponseEntity<>(returnValue, HttpStatus.BAD_REQUEST);
             }
         } catch (IllegalArgumentException | IllegalStateException e) {
             returnValue.setMessage("Bad request: " + e.getMessage());
@@ -251,6 +252,55 @@ public class DeviceManagerController {
             return new ResponseEntity<>(returnValue, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    
+
+    // Api of list devices.
+    @GetMapping("/listDevices")
+    public ResponseEntity<RequestResponse> methodOfFileUploadListDevices(
+            @RequestHeader("Authorization") String authHeader) {
+        RequestResponse returnValue = new RequestResponse();
+        try {
+            String token = authHeader.substring(7);
+            returnValue = deviceService.methodOfFileListDevices(token);
+            if (returnValue.getStatus() == 0) {
+                return ResponseEntity.ok(returnValue);
+            } else {
+                returnValue.setMessage("Failed to list devices. Status: " + returnValue.getStatus());
+                return new ResponseEntity<>(returnValue, HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+        } catch (Exception e) {
+            returnValue.setStatus(-1);
+            returnValue.setMessage("Internal server error while listing devices.");
+            logger.error(returnValue.getMessage(), e);
+            return new ResponseEntity<>(returnValue, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Api of delete list devices.
+    @DeleteMapping("/deleteListItem")
+    public ResponseEntity<RequestResponse> deleteListItem(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestHeader("macAddress") String macAddress) {
+        RequestResponse returnValue = new RequestResponse();
+        try {
+            if (authHeader == null || macAddress == null || macAddress.isEmpty()) {
+                returnValue.setStatus(-1);
+                returnValue.setMessage("Invalid headers");
+                return new ResponseEntity<>(returnValue, HttpStatus.BAD_REQUEST);
+            }
+            String token = authHeader.substring(7); 
+            returnValue = deviceService.methodofDeleteListDevices(token, macAddress);
+            if (returnValue.getStatus() == 0) {
+                return ResponseEntity.ok(returnValue);
+            } else {
+                returnValue.setMessage("Failed to delete device. Status: " + returnValue.getStatus());
+                return new ResponseEntity<>(returnValue, HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+        } catch (Exception e) {
+            returnValue.setStatus(-1);
+            returnValue.setMessage("Internal server error while deleting device.");
+            logger.error(returnValue.getMessage(), e);
+            return new ResponseEntity<>(returnValue, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 
 }

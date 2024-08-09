@@ -45,6 +45,9 @@ public class DeviceManagerService {
     private DeviceManagerHistoryService deviceManagerHistoryService;
 
     @Autowired
+    private DeviceManagerInfoService deviceManagerInfoService;
+
+    @Autowired
     private DeviceManagerAutoDeployService deviceManagerAutoDeployService;
 
     private String AcsTokenForAutoDeploy;
@@ -597,12 +600,9 @@ public class DeviceManagerService {
                     String rearrangedDate = currentDate.substring(6, 8) + // Day
                             currentDate.substring(4, 6) + // Month
                             currentDate.substring(0, 4); // Year
-                    System.out.println(DbDate + " db");
-                    System.out.println(rearrangedDate);
-                    System.out.println(dbModifiedTime);
-                    System.out.println(curretModifiedTime);
+                   
                     if (DbDate.equals(rearrangedDate) && dbModifiedTime.equals(curretModifiedTime)) {
-                        System.out.println("I am call");
+                       
                         if (fileFormat.equals("3 Vendor Configuration File")) {
                             fileFormatName = "configuration";
                         } else if (fileFormat.equals("1 Firmware Upgrade Images")) {
@@ -683,41 +683,71 @@ public class DeviceManagerService {
         }
     }
 
-    // Method of listing devices
-    public RequestResponse methodOfListingDevices(String token) {
+    // Method for listing devices
+    public RequestResponse methodOfFileListDevices(String token) {
         RequestResponse returnValue = new RequestResponse();
         try {
             HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("Cookie", "session={\"AuthToken\":\"" + token + "\"}");
-            HttpEntity<byte[]> entity = new HttpEntity<>(headers);
+            HttpEntity<String> entity = new HttpEntity<>(headers);
             String url = "http://" + Constants.DEVICE_MANAGER_IP + "/device-manager/api/files/?filter=true";
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.PUT, entity,
-                    String.class);
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
             if (response.getStatusCode() == HttpStatus.OK) {
                 returnValue.setStatus(0);
                 returnValue.setMessage(response.getBody());
-                returnValue.setMessageDetail("Listing device api call successfully.");
-                return returnValue;
+                returnValue.setMessageDetail("Successfully fetched device list.");
             } else {
                 returnValue.setStatus(-1);
-                returnValue.setMessage("Listing device api call fail.");
+                returnValue.setMessage("Failed to fetch device list. Status code: " + response.getStatusCode());
                 logger.info(returnValue.getMessage());
-                return returnValue;
             }
         } catch (Exception e) {
             returnValue.setStatus(-1);
-            returnValue.setMessage("Listing device internal server error.");
+            returnValue.setMessage("Internal server error while fetching device list.");
             logger.error(returnValue.getMessage(), e);
-            return returnValue;
         }
+        return returnValue;
+    }
+
+    // Method for listing devices
+    public RequestResponse methodofDeleteListDevices(String token, String macAddress) {
+        RequestResponse returnValue = new RequestResponse();
+        try {
+            DeviceManagerInfoModel deviceData = new DeviceManagerInfoModel();
+            deviceData = getProductDetails(macAddress);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("Cookie", "session={\"AuthToken\":\"" + token + "\"}");
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            String url = "http://" + Constants.DEVICE_MANAGER_IP
+                    + "/device-manager/api/devices/" + deviceData.getOui() + "-" + deviceData.getProductClass() + "-" + macAddress + "";
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.DELETE, entity, String.class);
+            RequestResponse res = deviceManagerInfoService.deleteInfo(macAddress);
+           
+            if (response.getStatusCode() == HttpStatus.OK) {
+                returnValue.setStatus(0);
+                returnValue.setMessage(deviceData.getMacAddress());
+                returnValue.setMessageDetail("Successfully fetched device list.");
+            } else {
+                returnValue.setStatus(-1);
+                returnValue.setMessage("Failed to fetch device list. Status code: " + response.getStatusCode());
+                logger.info(returnValue.getMessage());
+            }
+        } catch (Exception e) {
+            returnValue.setStatus(-1);
+            returnValue.setMessage("Internal server error while fetching device list.");
+            logger.error(returnValue.getMessage(), e);
+        }
+        return returnValue;
     }
 
     public static String base64Encode(String str) {
         return Base64.getEncoder().encodeToString(str.getBytes());
     }
 
-    public RequestResponse updateSipExtension(String userName, String password, String token ,String macAddress, DeviceManagerExtension request) {
+    public RequestResponse updateSipExtension(String userName, String password, String token, String macAddress,
+            DeviceManagerExtension request) {
         RequestResponse result = new RequestResponse();
         try {
             String url = "http://" + macAddress + "/download_xml_cfg";
@@ -735,7 +765,7 @@ public class DeviceManagerService {
             if (response.getStatusCode() == HttpStatus.OK) {
                 String responseBody = response.getBody();
                 byte[] fileData = responseBody.getBytes(StandardCharsets.UTF_8);
-                //UpdateConfigFileDate(fileData,request);
+                // UpdateConfigFileDate(fileData,request);
                 result.setStatus(0);
                 result.setMessage("SIP extension updated successfully.");
             } else {
@@ -749,4 +779,37 @@ public class DeviceManagerService {
         }
         return result;
     }
+
+    public RequestResponse DownloadFile(String token, String fileName) {
+        RequestResponse result = new RequestResponse();
+        try {
+            String url = "http://" + Constants.DEVICE_MANAGER_IP + "/device-manager/api/blob/files/" + fileName;
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("Cookie", "session={\"AuthToken\":\"" + token + "\"}");
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            RestTemplate restTemplate = new RestTemplate();
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    entity,
+                    String.class);
+            if (response.getStatusCode() == HttpStatus.OK) {
+                String responseBody = response.getBody();
+                byte[] fileData = responseBody.getBytes(StandardCharsets.UTF_8);
+                result.setFileData(fileData);
+                result.setStatus(0);
+                result.setMessage("File data fetch successfully.");
+            } else {
+                result.setStatus(response.getStatusCodeValue());
+                result.setMessage("Failed to fetch file data. HTTP Status Code: " + response.getStatusCode());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            result.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
+            result.setMessage("Internal server error: " + e.getMessage());
+        }
+        return result;
+    }
+
 }

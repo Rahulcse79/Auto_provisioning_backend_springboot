@@ -1,14 +1,13 @@
 package com.example.autoprovisioning.component.controller;
 
+import java.util.Collections;
 import java.util.List;
 import org.bson.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,22 +24,6 @@ public class DeviceManagerInfoController {
 
     @Autowired
     private DeviceManagerInfoService service;
-
-    @DeleteMapping("/delete/{id}")
-    public ResponseEntity<String> deleteHistoryFunction(@PathVariable int id) {
-        try {
-            RequestResponse result = service.deleteInfo(id);
-            if (result.getStatus() == 0) {
-                return ResponseEntity.ok("DeviceManagerInfo with ID " + id + " deleted successfully.");
-            } else {
-                return ResponseEntity.notFound().build();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to delete DeviceManagerInfo with ID " + id);
-        }
-    }
 
     @GetMapping("/infobymacaddress")
     public ResponseEntity<RequestResponse> findInfoByMacAddress(@RequestParam String macAddress) {
@@ -95,6 +78,39 @@ public class DeviceManagerInfoController {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(null);
+        }
+    }
+
+    // Api of online devices.
+    @GetMapping("/onlineDevices")
+    public ResponseEntity<RequestResponse> methodOfOnlineDevices(
+            @RequestHeader("Authorization") String authHeader) {
+        RequestResponse returnValue = new RequestResponse();
+        try {
+            String token = authHeader.substring(7);
+            returnValue = service.getOnlineDevices(token);
+            if (returnValue.getStatus() == 0) {
+                return ResponseEntity.ok(returnValue);
+            } else {
+                returnValue.setMessage("Failed to online devices. Status: " + returnValue.getStatus());
+                return new ResponseEntity<>(returnValue, HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+        } catch (Exception e) {
+            returnValue.setStatus(-1);
+            returnValue.setMessage("Internal server error while listing devices.");
+            return new ResponseEntity<>(returnValue, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @GetMapping("/allData")
+    public ResponseEntity<Iterable<DeviceManagerInfo>> getAllDevicesList() {
+        try {
+            Iterable<DeviceManagerInfo> data = service.getInfos();
+            return ResponseEntity.ok(data);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.emptyList());
         }
     }
 

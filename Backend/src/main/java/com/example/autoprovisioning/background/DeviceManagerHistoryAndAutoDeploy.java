@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.example.autoprovisioning.component.service.DeviceManagerService;
 import jakarta.annotation.PostConstruct;
-import com.example.autoprovisioning.component.helper.Constants;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
